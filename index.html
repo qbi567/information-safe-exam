@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>校園網路守護者：資安防火牆防禦戰</title>
+  <style>
+    :root {
+      --bg: #0b1120;
+      --panel: #162032;
+      --border: #2c3e5a;
+      --cyan: #38bdf8;
+      --green: #22c55e;
+      --red: #ef4444;
+      --amber: #f59e0b;
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+    }
+    * { box-sizing: border-box; font-family: "Microsoft JhengHei", "PingFang TC", system-ui, sans-serif; }
+    body {
+      margin: 0; background: radial-gradient(circle at top, #172554 0%, var(--bg) 65%);
+      color: var(--text); min-height: 100vh; display: flex; justify-content: center; padding: 16px;
+    }
+    .app {
+      width: 100%; max-width: 960px; background: var(--panel);
+      border: 1px solid var(--border); border-radius: 18px; padding: 20px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55);
+    }
+    .topbar {
+      display: flex; justify-content: space-between; align-items: center;
+      flex-wrap: wrap; gap: 10px; border-bottom: 1px solid var(--border); padding-bottom: 14px; margin-bottom: 18px;
+    }
+    .title { margin: 0; font-size: 1.35rem; color: var(--cyan); display: flex; align-items: center; gap: 8px; }
+    .top-actions { display: flex; gap: 8px; }
+    .btn {
+      border: none; border-radius: 10px; padding: 10px 18px; font-weight: bold; font-size: 0.98rem;
+      cursor: pointer; transition: transform 0.12s, opacity 0.2s;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn-primary { background: var(--cyan); color: #082f49; }
+    .btn-success { background: var(--green); color: #052e16; }
+    .btn-outline { background: #1e293b; color: var(--text); border: 1px solid var(--border); padding: 7px 12px; font-size: 0.85rem; }
+    .hidden { display: none !important; }
+
+    /* 登入頁 */
+    .login-box { max-width: 420px; margin: 30px auto; background: #0f172a; padding: 26px; border-radius: 14px; border: 1px solid var(--border); }
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; color: var(--muted); font-size: 0.9rem; margin-bottom: 6px; }
+    .form-group input {
+      width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #475569;
+      background: #1e293b; color: var(--text); font-size: 1rem;
+    }
+
+    /* 遊戲主區 */
+    .hud {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px;
+    }
+    .hud-card {
+      background: #0f172a; border: 1px solid var(--border); border-radius: 10px;
+      padding: 10px; text-align: center;
+    }
+    .hud-label { font-size: 0.78rem; color: var(--muted); }
+    .hud-val { font-size: 1.2rem; font-weight: bold; color: var(--cyan); margin-top: 2px; }
+
+    .question-box {
+      background: #0f172a; border-left: 5px solid var(--cyan); border-radius: 10px;
+      padding: 16px 18px; margin-bottom: 14px;
+    }
+    .q-meta { font-size: 0.85rem; color: var(--amber); font-weight: bold; margin-bottom: 6px; }
+    .q-text { font-size: 1.15rem; line-height: 1.5; margin: 0; }
+    .q-hint { font-size: 0.82rem; color: var(--muted); margin-top: 8px; }
+
+    /* 戰場 */
+    .battlefield {
+      position: relative; width: 100%; height: 400px; border-radius: 14px; overflow: hidden;
+      background:
+        linear-gradient(rgba(56, 189, 248, 0.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(56, 189, 248, 0.06) 1px, transparent 1px),
+        #070d1a;
+      background-size: 32px 32px;
+      border: 2px solid var(--border);
+    }
+    .battlefield.shake { animation: shake 0.35s ease; }
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-8px); }
+      50% { transform: translateX(8px); }
+      75% { transform: translateX(-5px); }
+    }
+
+    /* 左側守護者與防火牆 */
+    .defense-zone {
+      position: absolute; left: 0; top: 0; bottom: 0; width: 135px;
+      display: flex; align-items: flex-end; padding: 14px; gap: 10px;
+      background: linear-gradient(90deg, rgba(15, 23, 42, 0.92), transparent);
+      z-index: 5; pointer-events: none;
+    }
+    .guardian {
+      width: 64px; text-align: center; transition: transform 0.2s;
+    }
+    .guardian.hit { animation: guardianHit 0.4s; }
+    @keyframes guardianHit {
+      0%, 100% { filter: none; transform: translateX(0); }
+      50% { filter: drop-shadow(0 0 12px var(--red)); transform: translateX(-6px) rotate(-10deg); }
+    }
+    .firewall-track {
+      width: 34px; height: 340px; background: rgba(30, 41, 59, 0.85);
+      border: 1px solid #334155; border-radius: 8px; position: relative; overflow: hidden;
+      display: flex; flex-direction: column-reverse;
+    }
+    .firewall-fill {
+      width: 100%; height: 0%; background: linear-gradient(0deg, #0284c7, #38bdf8, #7dd3fc);
+      box-shadow: 0 0 14px rgba(56, 189, 248, 0.8); transition: height 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .firewall-tag {
+      position: absolute; top: 6px; left: 50%; transform: translateX(-50%);
+      font-size: 0.68rem; font-weight: bold; color: #e0f2fe; writing-mode: vertical-rl;
+      text-shadow: 0 1px 3px #000;
+    }
+
+    /* 雷射 SVG 層 */
+    #laser-layer {
+      position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 20;
+    }
+
+    /* 可愛威脅漂浮物件 */
+    .threat-node {
+      position: absolute; width: 86px; text-align: center; cursor: pointer;
+      user-select: none; z-index: 10; transition: transform 0.25s ease, opacity 0.3s ease;
+    }
+    .threat-node:hover { filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.55)); }
+    .threat-label {
+      display: inline-block; margin-top: 2px; padding: 2px 7px; border-radius: 999px;
+      background: rgba(15, 23, 42, 0.88); border: 1px solid rgba(148, 163, 184, 0.5);
+      font-size: 0.76rem; font-weight: bold; color: #f8fafc; white-space: nowrap;
+    }
+    .threat-node.destroyed { transform: scale(1.6) !important; opacity: 0; pointer-events: none; }
+    .threat-node.enraged .threat-label { border-color: var(--red); color: #fecaca; }
+
+    /* 回饋列 */
+    .feedback-bar {
+      margin-top: 14px; padding: 14px 16px; border-radius: 10px;
+      display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;
+    }
+    .feedback-bar.ok { background: rgba(34, 197, 94, 0.14); border: 1px solid var(--green); }
+    .feedback-bar.err { background: rgba(239, 68, 68, 0.14); border: 1px solid var(--red); }
+
+    /* 結算與證書 */
+    .result-wrap { text-align: center; }
+    #cert-canvas {
+      width: 100%; max-width: 760px; height: auto; border-radius: 12px;
+      box-shadow: 0 12px 35px rgba(0, 0, 0, 0.6); margin: 14px 0; border: 2px solid #eab308;
+    }
+    .result-actions { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; margin-top: 12px; }
+
+    /* 彈窗 */
+    .modal {
+      position: fixed; inset: 0; background: rgba(0, 0, 0, 0.75);
+      display: flex; justify-content: center; align-items: center; padding: 16px; z-index: 100;
+    }
+    .modal-card {
+      width: 100%; max-width: 480px; background: var(--panel); border: 1px solid var(--border);
+      border-radius: 14px; padding: 22px;
+    }
+    @media (max-width: 640px) {
+      .hud { grid-template-columns: repeat(2, 1fr); }
+      .battlefield { height: 440px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="topbar">
+      <h1 class="title">🛡️ 校園網路守護者：資安防火牆防禦戰</h1>
+      <div class="top-actions">
+        <button class="btn btn-outline" id="sound-btn" onclick="toggleSound()">🔊 音效：開</button>
+        <button class="btn btn-outline" onclick="openSettings()">⚙️ 教師設定</button>
+      </div>
+    </div>
+
+    <!-- 1. 登入畫面 -->
+    <div id="screen-login">
+      <div class="login-box">
+        <h2 style="margin-top:0; color:var(--cyan);">受試者報到</h2>
+        <p style="color:var(--muted); font-size:0.92rem; line-height:1.5;">
+          本測驗共 <strong>14 道資安情境題</strong>（含惡意程式與資安威脅來源）。請閱讀題目後，直接點選戰場中對應的威脅角色進行擊破！
+        </p>
+        <div class="form-group">
+          <label for="input-class">班級（例如：701）</label>
+          <input type="text" id="input-class" placeholder="請輸入班級" />
+        </div>
+        <div class="form-group">
+          <label for="input-seat">座號（例如：05）</label>
+          <input type="text" id="input-seat" placeholder="請輸入座號" />
+        </div>
+        <button class="btn btn-primary" style="width:100%;" onclick="startGame()">啟動防禦任務</button>
+      </div>
+    </div>
+
+    <!-- 2. 遊戲戰場畫面 -->
+    <div id="screen-game" class="hidden">
+      <div class="hud">
+        <div class="hud-card"><div class="hud-label">目前進度</div><div class="hud-val" id="hud-progress">1 / 14</div></div>
+        <div class="hud-card"><div class="hud-label">總積分</div><div class="hud-val" id="hud-score">0</div></div>
+        <div class="hud-card"><div class="hud-label">失誤扣分</div><div class="hud-val" id="hud-penalty" style="color:var(--red);">0</div></div>
+        <div class="hud-card"><div class="hud-label">防火牆建造</div><div class="hud-val" id="hud-fw" style="color:var(--green);">0%</div></div>
+      </div>
+
+      <div class="question-box">
+        <div class="q-meta" id="q-meta">第 1 關資安警報</div>
+        <p class="q-text" id="q-text">題目載入中...</p>
+        <div class="q-hint">👆 請點擊下方戰場中對應的威脅目標進行擊破</div>
+      </div>
+
+      <div class="battlefield" id="battlefield">
+        <div class="defense-zone">
+          <div class="guardian" id="guardian">
+            <svg viewBox="0 0 64 64" width="60" height="60">
+              <circle cx="32" cy="22" r="14" fill="#38bdf8" stroke="#e0f2fe" stroke-width="2.5"/>
+              <rect x="23" y="18" width="18" height="7" rx="3.5" fill="#0f172a"/>
+              <circle cx="28" cy="21.5" r="2" fill="#22d3ee"/>
+              <circle cx="36" cy="21.5" r="2" fill="#22d3ee"/>
+              <path d="M16 56 C16 40, 48 40, 48 56 Z" fill="#0284c7" stroke="#bae6fd" stroke-width="2"/>
+              <path d="M32 38 L44 43 L41 55 L32 59 L23 55 L20 43 Z" fill="#0f172a" stroke="#38bdf8" stroke-width="2"/>
+            </svg>
+            <div style="font-size:0.72rem; color:#bae6fd; font-weight:bold;">資安守護者</div>
+          </div>
+          <div class="firewall-track">
+            <div class="firewall-fill" id="firewall-fill"></div>
+            <div class="firewall-tag">防火牆</div>
+          </div>
+        </div>
+
+        <svg id="laser-layer"></svg>
+        <div id="threats-layer"></div>
+      </div>
+
+      <div id="feedback-bar" class="feedback-bar hidden">
+        <div id="feedback-text" style="flex:1; line-height:1.45;"></div>
+        <button class="btn btn-primary" id="next-btn" onclick="nextQuestion()">下一關 →</button>
+      </div>
+    </div>
+
+    <!-- 3. 結算與證書畫面 -->
+    <div id="screen-result" class="hidden result-wrap">
+      <h2 style="margin:0 0 6px; color:var(--amber);">🏆 任務完成！專屬資安證書已生成</h2>
+      <p id="upload-status" style="margin:0 0 10px; font-size:0.92rem; color:var(--cyan);">⏳ 正在將成績傳送至老師的雲端試算表...</p>
+      <canvas id="cert-canvas" width="900" height="600"></canvas>
+      <div class="result-actions">
+        <button class="btn btn-success" onclick="downloadCertificate()">📥 下載證書圖檔 (PNG)</button>
+        <button class="btn btn-primary" onclick="restartGame()">🔄 再玩一次</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 教師設定彈窗 -->
+  <div id="settings-modal" class="modal hidden">
+    <div class="modal-card">
+      <h3 style="margin-top:0; color:var(--cyan);">⚙️ 教師設定（Google 試算表串接）</h3>
+      <div class="form-group">
+        <label for="gas-url-input">Google Apps Script 網頁應用程式網址（/exec 結尾）</label>
+        <input type="text" id="gas-url-input" placeholder="https://script.google.com/macros/s/.../exec" />
+      </div>
+      <div style="display:flex; gap:10px;">
+        <button class="btn btn-primary" style="flex:1;" onclick="saveSettings()">儲存設定</button>
+        <button class="btn btn-outline" onclick="closeSettings()">關閉</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ★ 請將你的 Google Apps Script 網頁應用程式網址貼在下方引號內
+    const DEFAULT_GAS_URL = "https://script.google.com/macros/s/AKfycbxdm2FWEhBUeb6qrgL2WmdaDwiKwpnLZh3a6D5fu7YqN_GIHv8ueO4wthDsA7ZAcDHHtw/exec";
+
+    // 14 道題目（10 題惡意程式 + 4 題資訊安全威脅來源）
+    const QUESTIONS = [
+      { category: "電腦病毒", q: "開啟同學傳來的簡報檔後，電腦內多個正常程式都被自動附加異常程式碼。這最可能屬於哪種威脅？", exp: "電腦病毒需要依附宿主檔案，經由使用者點擊執行後才會複製並感染其他檔案。" },
+      { category: "電腦病毒", q: "某執行檔被啟動後，會將自身程式碼寫入系統其他可執行檔，並等待下次被點擊時觸發。此特性為何？", exp: "寄生於正常程式並等待觸發，是「電腦病毒」的典型特徵。" },
+      { category: "蠕蟲", q: "沒有點擊任何附件，區域網路內未更新修補程式的電腦卻在幾分鐘內集體癱瘓。最可能的元凶為何？", exp: "蠕蟲不需使用者互動，會自動利用網路漏洞自我複製並大量佔用頻寬。" },
+      { category: "蠕蟲", q: "惡意程式主動掃描網路連接埠，自動尋找主機弱點並跨電腦擴散。這屬於哪一類？", exp: "主動透過網路自動繁衍與傳播至其他主機，屬於「蠕蟲」。" },
+      { category: "木馬程式", q: "下載「免費遊戲外掛」並安裝後，系統看似正常運作，但駭客已取得遠端控制權。這是哪種手法？", exp: "木馬程式偽裝成有用或有趣的軟體誘騙安裝，暗中開啟後門。" },
+      { category: "木馬程式", q: "偽裝成系統加速工具誘騙使用者主動執行，實際上在背景建立未授權的遠端存取通道。此程式稱為？", exp: "透過偽裝欺騙使用者安裝以建立後門，正是「木馬程式」。" },
+      { category: "間諜軟體", q: "電腦運作看似正常，但瀏覽紀錄與鍵盤輸入的帳號密碼卻持續被傳送至外部伺服器。這屬於？", exp: "間諜軟體會潛伏於背景，暗中側錄鍵盤與上網行為來竊取機密。" },
+      { category: "間諜軟體", q: "某背景程式未經同意暗中擷取螢幕畫面與剪貼簿內容，並秘密回傳給駭客。這屬於哪種威脅？", exp: "暗中監控並外傳使用者敏感資訊的程式稱為「間諜軟體」。" },
+      { category: "廣告軟體", q: "安裝免費軟體後，瀏覽器首頁被強制鎖定，且螢幕不斷跳出推銷視窗。這是哪種軟體的特徵？", exp: "強制彈出促銷視窗或綁架首頁，是「廣告軟體」的常見行為。" },
+      { category: "廣告軟體", q: "系統資源被大量佔用以持續載入商業橫幅，並追蹤點擊行為不斷推送促銷內容。這屬於？", exp: "以強制投放商業廣告牟利的程式即為「廣告軟體」。" },
+      { category: "軟體漏洞", q: "作業系統與應用程式長期未更新修補程式，導致駭客利用設計缺陷直接入侵系統。這屬於哪種威脅來源？", exp: "程式設計上的安全弱點若未及時更新修補，即為「軟體漏洞」威脅。" },
+      { category: "不安全的設備", q: "學校或家中的無線路由器、網路攝影機仍使用出廠預設密碼且未加密連線，容易遭駭客接管。這屬於哪種威脅來源？", exp: "缺乏防護設定或使用預設密碼的硬體與物聯網裝置，屬於「不安全的設備」。" },
+      { category: "社交工程", q: "駭客假冒銀行客服寄送「帳戶異常」釣魚簡訊，誘騙受害者點擊假網站並自行輸入密碼。這屬於哪種威脅來源？", exp: "利用人性弱點（恐懼、貪念或信任）進行心理操弄以騙取機密，稱為「社交工程」。" },
+      { category: "個資外洩", q: "網站資料庫防護不足遭竊，導致大量會員的姓名、電話、身分證字號與密碼流出至暗網販賣。這屬於哪種威脅來源？", exp: "敏感個人資料因管理不善或遭入侵而暴露於未授權者，屬於「個資外洩」。" }
+    ];
+
+    // 可愛角色視覺配色（純視覺變化，不暗示答案）
+    const COLORS = ["#f43f5e", "#a855f7", "#ec4899", "#f97316", "#eab308", "#14b8a6", "#6366f1", "#fb7185", "#c084fc"];
+
+    let studentClass = "", studentSeat = "";
+    let quizList = [];
+    let currentIndex = 0;
+    let totalScore = 0, correctCount = 0, penaltyPoints = 0, firewallLevel = 0;
+    let isLocked = false;
+    let soundOn = true;
+    let threatObjects = [];
+    let animFrameId = null;
+
+    // --- Web Audio API 合成音效 ---
+    let audioCtx = null;
+    function playTone(freq, type, duration, endFreq) {
+      if (!soundOn) return;
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+      if (endFreq) osc.frequency.exponentialRampToValueAtTime(endFreq, audioCtx.currentTime + duration);
+      gain.gain.setValueAtTime(0.18, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.start(); osc.stop(audioCtx.currentTime + duration);
+    }
+    function sfxHit() { playTone(720, "triangle", 0.16, 180); setTimeout(() => playTone(980, "sine", 0.18, 1280), 90); }
+    function sfxWrong() { playTone(220, "sawtooth", 0.28, 95); }
+    function sfxWin() { [523, 659, 784, 1046].forEach((f, i) => setTimeout(() => playTone(f, "triangle", 0.2), i * 110)); }
+    function toggleSound() {
+      soundOn = !soundOn;
+      document.getElementById("sound-btn").textContent = soundOn ? "🔊 音效：開" : "🔇 音效：關";
+    }
+
+    // --- 可愛病毒/威脅 SVG 生成 ---
+    function createCuteMonsterSVG(color, variant) {
+      const eyes = variant % 2 === 0
+        ? `<circle cx="24" cy="28" r="4" fill="#fff"/><circle cx="40" cy="28" r="4" fill="#fff"/>
+           <circle cx="25" cy="28" r="2" fill="#0f172a"/><circle cx="41" cy="28" r="2" fill="#0f172a"/>`
+        : `<ellipse cx="24" cy="28" rx="4.5" ry="3.5" fill="#fff"/><ellipse cx="40" cy="28" rx="4.5" ry="3.5" fill="#fff"/>
+           <circle cx="24" cy="28" r="2" fill="#0f172a"/><circle cx="40" cy="28" r="2" fill="#0f172a"/>`;
+      return `
+        <svg viewBox="0 0 64 64" width="52" height="52">
+          <line x1="32" y1="6" x2="32" y2="14" stroke="${color}" stroke-width="4" stroke-linecap="round"/>
+          <circle cx="32" cy="6" r="3.5" fill="${color}"/>
+          <line x1="12" y1="16" x2="18" y2="21" stroke="${color}" stroke-width="4" stroke-linecap="round"/>
+          <circle cx="11" cy="15" r="3" fill="${color}"/>
+          <line x1="52" y1="16" x2="46" y2="21" stroke="${color}" stroke-width="4" stroke-linecap="round"/>
+          <circle cx="53" cy="15" r="3" fill="${color}"/>
+          <line x1="10" y1="42" x2="17" y2="39" stroke="${color}" stroke-width="4" stroke-linecap="round"/>
+          <line x1="54" y1="42" x2="47" y2="39" stroke="${color}" stroke-width="4" stroke-linecap="round"/>
+          <circle cx="32" cy="32" r="20" fill="${color}" stroke="#ffffff55" stroke-width="2"/>
+          ${eyes}
+          <path d="M25 39 Q32 45 39 39" fill="none" stroke="#0f172a" stroke-width="2.6" stroke-linecap="round"/>
+          <circle cx="19" cy="34" r="2.5" fill="#ffffff66"/>
+          <circle cx="45" cy="34" r="2.5" fill="#ffffff66"/>
+        </svg>
+      `;
+    }
+
+    function showScreen(id) {
+      ["screen-login", "screen-game", "screen-result"].forEach(s => {
+        document.getElementById(s).classList.toggle("hidden", s !== id);
+      });
+    }
+
+    function shuffle(arr) {
+      const a = [...arr];
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    function startGame() {
+      studentClass = document.getElementById("input-class").value.trim();
+      studentSeat = document.getElementById("input-seat").value.trim();
+      if (!studentClass || !studentSeat) { alert("請先輸入班級與座號！"); return; }
+      initSession();
+    }
+
+    function restartGame() {
+      initSession();
+    }
+
+    function initSession() {
+      quizList = shuffle(QUESTIONS);
+      currentIndex = 0; totalScore = 0; correctCount = 0; penaltyPoints = 0; firewallLevel = 0;
+      isLocked = false;
+      showScreen("screen-game");
+      updateHUD();
+      spawnThreats();
+      renderQuestion();
+      startFloatingLoop();
+    }
+
+    function spawnThreats() {
+      const layer = document.getElementById("threats-layer");
+      layer.innerHTML = "";
+      threatObjects = [];
+
+      const field = document.getElementById("battlefield");
+      const minX = 145, maxX = Math.max(260, field.clientWidth - 95);
+      const minY = 12, maxY = Math.max(180, field.clientHeight - 85);
+
+      // 依 14 道題目的對應類別建立 14 隻散落各處的可愛威脅角色
+      const shuffledTargets = shuffle(QUESTIONS.map(q => q.category));
+      shuffledTargets.forEach((cat, idx) => {
+        const el = document.createElement("div");
+        el.className = "threat-node";
+        const color = COLORS[idx % COLORS.length];
+        el.innerHTML = `${createCuteMonsterSVG(color, idx)}<div class="threat-label">${cat}</div>`;
+
+        const obj = {
+          id: idx,
+          category: cat,
+          el,
+          x: minX + Math.random() * (maxX - minX),
+          y: minY + Math.random() * (maxY - minY),
+          vx: (Math.random() * 0.55 + 0.25) * (Math.random() < 0.5 ? 1 : -1),
+          vy: (Math.random() * 0.55 + 0.25) * (Math.random() < 0.5 ? 1 : -1),
+          scale: 1,
+          alive: true
+        };
+        el.style.left = `${obj.x}px`;
+        el.style.top = `${obj.y}px`;
+        el.onclick = () => handleThreatClick(obj);
+        layer.appendChild(el);
+        threatObjects.push(obj);
+      });
+    }
+
+    function startFloatingLoop() {
+      if (animFrameId) cancelAnimationFrame(animFrameId);
+      const field = document.getElementById("battlefield");
+      function step() {
+        const minX = 140, maxX = Math.max(240, field.clientWidth - 92);
+        const minY = 8, maxY = Math.max(160, field.clientHeight - 82);
+        threatObjects.forEach(t => {
+          if (!t.alive) return;
+          t.x += t.vx;
+          t.y += t.vy;
+          if (t.x <= minX || t.x >= maxX) t.vx *= -1;
+          if (t.y <= minY || t.y >= maxY) t.vy *= -1;
+          t.x = Math.max(minX, Math.min(maxX, t.x));
+          t.y = Math.max(minY, Math.min(maxY, t.y));
+          t.el.style.left = `${t.x}px`;
+          t.el.style.top = `${t.y}px`;
+          t.el.style.transform = `scale(${t.scale})`;
+        });
+        animFrameId = requestAnimationFrame(step);
+      }
+      animFrameId = requestAnimationFrame(step);
+    }
+
+    function renderQuestion() {
+      isLocked = false;
+      const q = quizList[currentIndex];
+      document.getElementById("q-meta").textContent = `第 ${currentIndex + 1} / ${quizList.length} 關資安警報`;
+      document.getElementById("q-text").textContent = q.q;
+      document.getElementById("feedback-bar").classList.add("hidden");
+      updateHUD();
+    }
+
+    function fireLaser(fromEl, toEl, color) {
+      const fieldRect = document.getElementById("battlefield").getBoundingClientRect();
+      const r1 = fromEl.getBoundingClientRect();
+      const r2 = toEl.getBoundingClientRect();
+      const x1 = r1.left + r1.width / 2 - fieldRect.left;
+      const y1 = r1.top + r1.height / 2 - fieldRect.top;
+      const x2 = r2.left + r2.width / 2 - fieldRect.left;
+      const y2 = r2.top + r2.height / 2 - fieldRect.top;
+
+      const svg = document.getElementById("laser-layer");
+      const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      line.setAttribute("x1", x1); line.setAttribute("y1", y1);
+      line.setAttribute("x2", x2); line.setAttribute("y2", y2);
+      line.setAttribute("stroke", color);
+      line.setAttribute("stroke-width", "6");
+      line.setAttribute("stroke-linecap", "round");
+      svg.appendChild(line);
+      setTimeout(() => line.remove(), 260);
+    }
+
+    function handleThreatClick(target) {
+      if (isLocked || !target.alive) return;
+      isLocked = true;
+
+      const q = quizList[currentIndex];
+      const guardian = document.getElementById("guardian");
+      const fbBar = document.getElementById("feedback-bar");
+      const fbText = document.getElementById("feedback-text");
+
+      if (target.category === q.category) {
+        // 答對：擊破消失、防火牆增高
+        sfxHit();
+        fireLaser(guardian, target.el, "#38bdf8");
+        target.alive = false;
+        target.el.classList.add("destroyed");
+        correctCount++;
+        totalScore += 10;
+        firewallLevel = Math.min(quizList.length, firewallLevel + 1);
+
+        fbBar.className = "feedback-bar ok";
+        fbText.innerHTML = `✅ <strong>成功擊破「${target.category}」！防火牆高度提升！</strong><br>${q.exp}`;
+      } else {
+        // 答錯：目標變大反擊、防火牆降低
+        sfxWrong();
+        fireLaser(target.el, guardian, "#ef4444");
+        target.scale = Math.min(1.8, target.scale + 0.28);
+        target.el.classList.add("enraged");
+        penaltyPoints += 5;
+        totalScore = Math.max(0, totalScore - 5);
+        firewallLevel = Math.max(0, firewallLevel - 1);
+
+        const field = document.getElementById("battlefield");
+        field.classList.add("shake");
+        guardian.classList.add("hit");
+        setTimeout(() => { field.classList.remove("shake"); guardian.classList.remove("hit"); }, 400);
+
+        fbBar.className = "feedback-bar err";
+        fbText.innerHTML = `❌ <strong>防禦失誤！</strong>你點選了「${target.category}」，但正確威脅為「<strong>${q.category}</strong>」。威脅變大且防火牆受損！<br>${q.exp}`;
+      }
+
+      updateHUD();
+      document.getElementById("next-btn").textContent = currentIndex === quizList.length - 1 ? "查看結業證書 →" : "下一關 →";
+      fbBar.classList.remove("hidden");
+    }
+
+    function nextQuestion() {
+      currentIndex++;
+      if (currentIndex < quizList.length) {
+        renderQuestion();
+      } else {
+        finishQuiz();
+      }
+    }
+
+    function getFirewallPercent() {
+      return Math.round((firewallLevel / quizList.length) * 100);
+    }
+
+    function getHonorTitle(score) {
+      if (score >= 130) return "傳奇資安守護神";
+      if (score >= 100) return "首席資安架構師";
+      if (score >= 70) return "資安防禦特勤員";
+      return "見習網路巡邏員";
+    }
+
+    function updateHUD() {
+      const fwPct = getFirewallPercent();
+      document.getElementById("hud-progress").textContent = `${Math.min(currentIndex + 1, quizList.length)} / ${quizList.length}`;
+      document.getElementById("hud-score").textContent = totalScore;
+      document.getElementById("hud-penalty").textContent = penaltyPoints > 0 ? `-${penaltyPoints}` : "0";
+      document.getElementById("hud-fw").textContent = `${fwPct}%`;
+      document.getElementById("firewall-fill").style.height = `${fwPct}%`;
+    }
+
+    function finishQuiz() {
+      if (animFrameId) cancelAnimationFrame(animFrameId);
+      sfxWin();
+      showScreen("screen-result");
+
+      const fwPct = getFirewallPercent();
+      const honorTitle = getHonorTitle(totalScore);
+      drawCertificate(honorTitle, fwPct);
+      uploadToSheets(honorTitle, fwPct);
+    }
+
+    // --- 繪製高解析度數位證書 ---
+    function drawCertificate(honorTitle, fwPct) {
+      const canvas = document.getElementById("cert-canvas");
+      const ctx = canvas.getContext("2d");
+
+      // 背景漸層
+      const grad = ctx.createLinearGradient(0, 0, 900, 600);
+      grad.addColorStop(0, "#0f172a");
+      grad.addColorStop(1, "#1e293b");
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 900, 600);
+
+      // 金色雙層外框
+      ctx.strokeStyle = "#eab308";
+      ctx.lineWidth = 8;
+      ctx.strokeRect(20, 20, 860, 560);
+      ctx.strokeStyle = "#38bdf8";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(34, 34, 832, 532);
+
+      // 標題
+      ctx.fillStyle = "#fde047";
+      ctx.font = "bold 42px Microsoft JhengHei, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("資訊安全守護者 結業證書", 450, 108);
+
+      ctx.fillStyle = "#38bdf8";
+      ctx.font = "bold 20px Microsoft JhengHei, sans-serif";
+      ctx.fillText("CAMPUS CYBERSECURITY GUARDIAN CERTIFICATE", 450, 144);
+
+      // 學生資訊
+      ctx.fillStyle = "#f8fafc";
+      ctx.font = "bold 30px Microsoft JhengHei, sans-serif";
+      ctx.fillText(`茲證明  ${studentClass} 班  ${studentSeat} 號  同學`, 450, 215);
+
+      ctx.fillStyle = "#cbd5e1";
+      ctx.font = "20px Microsoft JhengHei, sans-serif";
+      ctx.fillText("已完成資訊安全惡意程式與威脅來源防禦實戰測驗，獲頒榮譽稱號：", 450, 258);
+
+      // 榮譽稱號徽章框
+      ctx.fillStyle = "rgba(234, 179, 8, 0.16)";
+      ctx.strokeStyle = "#facc15";
+      ctx.lineWidth = 2.5;
+      ctx.fillRect(250, 278, 400, 64);
+      ctx.strokeRect(250, 278, 400, 64);
+
+      ctx.fillStyle = "#fde047";
+      ctx.font = "bold 34px Microsoft JhengHei, sans-serif";
+      ctx.fillText(`★ ${honorTitle} ★`, 450, 322);
+
+      // 成績數據四欄卡片
+      const stats = [
+        { label: "總積分", val: `${totalScore} 分`, color: "#38bdf8" },
+        { label: "答對題數", val: `${correctCount} / ${quizList.length} 題`, color: "#4ade80" },
+        { label: "失誤扣分", val: `${penaltyPoints > 0 ? "-" + penaltyPoints : "0"} 分`, color: "#f87171" },
+        { label: "防火牆建造", val: `${fwPct}%`, color: "#facc15" }
+      ];
+      stats.forEach((s, i) => {
+        const bx = 75 + i * 195;
+        ctx.fillStyle = "rgba(15, 23, 42, 0.85)";
+        ctx.strokeStyle = "#334155";
+        ctx.lineWidth = 1.5;
+        ctx.fillRect(bx, 380, 175, 105);
+        ctx.strokeRect(bx, 380, 175, 105);
+
+        ctx.fillStyle = "#94a3b8";
+        ctx.font = "18px Microsoft JhengHei, sans-serif";
+        ctx.fillText(s.label, bx + 87, 415);
+
+        ctx.fillStyle = s.color;
+        ctx.font = "bold 28px Microsoft JhengHei, sans-serif";
+        ctx.fillText(s.val, bx + 87, 460);
+      });
+
+      // 日期與簽章
+      const today = new Date().toLocaleDateString("zh-TW");
+      ctx.fillStyle = "#94a3b8";
+      ctx.font = "18px Microsoft JhengHei, sans-serif";
+      ctx.textAlign = "left";
+      ctx.fillText(`發證日期：${today}`, 75, 540);
+      ctx.textAlign = "right";
+      ctx.fillText("校園網路安全防禦中心 核發", 825, 540);
+    }
+
+    function downloadCertificate() {
+      const link = document.createElement("a");
+      link.download = `資安守護者證書_${studentClass}班_${studentSeat}號.png`;
+      link.href = document.getElementById("cert-canvas").toDataURL("image/png");
+      link.click();
+    }
+
+    // --- 成績傳送至 Google 試算表 ---
+    function uploadToSheets(honorTitle, fwPct) {
+      const gasUrl = localStorage.getItem("gas_url") || DEFAULT_GAS_URL;
+      const statusEl = document.getElementById("upload-status");
+
+      if (!gasUrl) {
+        statusEl.textContent = "⚠️ 尚未設定雲端試算表網址（請點選右上角「⚙️ 教師設定」填入 GAS 網址）。";
+        statusEl.style.color = "var(--amber)";
+        return;
+      }
+
+      fetch(gasUrl, {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          className: studentClass,
+          seatNumber: studentSeat,
+          totalScore: totalScore,
+          honorTitle: honorTitle,
+          correctCount: `${correctCount}/${quizList.length}`,
+          penaltyPoints: penaltyPoints,
+          firewallPercent: `${fwPct}%`
+        })
+      }).then(() => {
+        statusEl.textContent = "✅ 作答成績已成功傳送至老師的雲端試算表！";
+        statusEl.style.color = "var(--green)";
+      }).catch(() => {
+        statusEl.textContent = "❌ 成績傳送失敗，請確認網路連線或 GAS 網址是否正確。";
+        statusEl.style.color = "var(--red)";
+      });
+    }
+
+    // --- 教師設定 ---
+    function openSettings() {
+      document.getElementById("gas-url-input").value = localStorage.getItem("gas_url") || DEFAULT_GAS_URL;
+      document.getElementById("settings-modal").classList.remove("hidden");
+    }
+    function closeSettings() { document.getElementById("settings-modal").classList.add("hidden"); }
+    function saveSettings() {
+      const url = document.getElementById("gas-url-input").value.trim();
+      localStorage.setItem("gas_url", url);
+      alert("設定已儲存！");
+      closeSettings();
+    }
+  </script>
+</body>
+</html>
