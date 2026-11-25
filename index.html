@@ -170,14 +170,17 @@
 </head>
 <body>
   <div class="app">
-    <div class="topbar">
-      <h1 class="title">🛡️ 校園網路守護者：資安防火牆防禦戰</h1>
-      <div class="top-actions" style="align-items: center;">
+<div class="topbar" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+      <h1 class="title" style="flex: 1; min-width: 260px;">🛡️ 校園網路守護者：資安防火牆防禦戰</h1>
+      <div class="top-actions" style="justify-content: center;">
         <button class="btn btn-outline" id="sound-btn" onclick="toggleSound()">🔊 音效：開</button>
         <button class="btn btn-outline" onclick="openSettings()">⚙️ 教師設定</button>
-        <img src="Qbi教學頻道Logo_小狐狸.png" alt="Qbi教學頻道 Logo" style="height: 40px; width: auto; margin-left: 6px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));" />
+      </div>
+      <div style="flex: 1; display: flex; justify-content: flex-end; align-items: center;">
+        <img src="Qbi教學頻道Logo_小狐狸.png" alt="Qbi教學頻道 Logo" style="height: 44px; width: auto; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));" />
       </div>
     </div>
+
 
     <!-- 1. 登入畫面 -->
     <div id="screen-login">
@@ -197,8 +200,6 @@
         <button class="btn btn-primary" style="width:100%;" onclick="startGame()">啟動防禦任務</button>
 
 
-        
-      </div>
     </div>
 
     <!-- 2. 遊戲戰場畫面 -->
@@ -639,28 +640,31 @@
         ctx.fillText(s.val, bx + 87, 460);
       });
 
-      // 日期與簽章
-      const today = new Date().toLocaleDateString("zh-TW");
+// 底部日期（保留在左下角）
       ctx.fillStyle = "#94a3b8";
-      ctx.font = "18px Microsoft JhengHei, sans-serif";
+      ctx.font = "20px Microsoft JhengHei, sans-serif";
       ctx.textAlign = "left";
-      ctx.fillText(`發證日期：${today}`, 75, 540);
-      ctx.textAlign = "right";
-      ctx.fillText("校園網路安全防禦中心 核發", 825, 540);
+      ctx.fillText(`發證日期：${new Date().toLocaleDateString("zh-TW")}`, 70, 628);
 
-// 繪製作者 Logo 與標註（置於證書底部中央）
+      // 繪製作者 Logo（位於「校園網路安全防禦中心 核發」左邊，整體於最下方置中）
       const logoImg = new Image();
       logoImg.onload = function () {
-        const logoH = 62;
+        const logoH = 50;
         const logoW = logoH * (logoImg.width / logoImg.height);
-        ctx.drawImage(logoImg, 500 - logoW / 2, 552, logoW, logoH);
-        ctx.fillStyle = "#cbd5e1";
-        ctx.font = "bold 18px Microsoft JhengHei, sans-serif";
-        ctx.textAlign = "center";
-        ctx.fillText("製作設計：Qbi 教學頻道", 500, 642);
+        const issuerText = "校園網路安全防禦中心 核發";
+        ctx.font = "bold 22px Microsoft JhengHei, sans-serif";
+        const textW = ctx.measureText(issuerText).width;
+        const gap = 14;
+        const totalW = logoW + gap + textW;
+        const startX = 500 - totalW / 2;
+
+        ctx.drawImage(logoImg, startX, 594, logoW, logoH);
+        ctx.fillStyle = "#e2e8f0";
+        ctx.textAlign = "left";
+        ctx.fillText(issuerText, startX + logoW + gap, 628);
       };
       logoImg.src = "Qbi教學頻道Logo_小狐狸.png";
-      
+
     }
 
     function downloadCertificate() {
