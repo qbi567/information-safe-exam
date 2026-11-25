@@ -170,14 +170,14 @@
 </head>
 <body>
   <div class="app">
-<div class="topbar" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
-      <h1 class="title" style="flex: 1; min-width: 260px;">🛡️ 校園網路守護者：資安防火牆防禦戰</h1>
-      <div class="top-actions" style="justify-content: center;">
+<div class="topbar" style="display: flex; flex-direction: column; gap: 10px; padding-bottom: 12px; margin-bottom: 16px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; gap: 12px;">
+        <h1 class="title" style="margin: 0;">🛡️ 校園網路守護者：資安防火牆防禦戰</h1>
+        <img src="Qbi教學頻道Logo_小狐狸.png" alt="Qbi教學頻道 Logo" style="height: 40px; width: auto; flex-shrink: 0; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));" />
+      </div>
+      <div class="top-actions" style="display: flex; justify-content: center; width: 100%; gap: 10px;">
         <button class="btn btn-outline" id="sound-btn" onclick="toggleSound()">🔊 音效：開</button>
         <button class="btn btn-outline" onclick="openSettings()">⚙️ 教師設定</button>
-      </div>
-      <div style="flex: 1; display: flex; justify-content: flex-end; align-items: center;">
-        <img src="Qbi教學頻道Logo_小狐狸.png" alt="Qbi教學頻道 Logo" style="height: 44px; width: auto; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));" />
       </div>
     </div>
 
@@ -642,26 +642,26 @@
 
 // 底部日期（保留在左下角）
       ctx.fillStyle = "#94a3b8";
-      ctx.font = "20px Microsoft JhengHei, sans-serif";
+      ctx.font = "18px Microsoft JhengHei, sans-serif";
       ctx.textAlign = "left";
-      ctx.fillText(`發證日期：${new Date().toLocaleDateString("zh-TW")}`, 70, 628);
+      ctx.fillText(`發證日期：${new Date().toLocaleDateString("zh-TW")}`, 60, 626);
 
-      // 繪製作者 Logo（位於「校園網路安全防禦中心 核發」左邊，整體於最下方置中）
+      // 繪製縮小版作者 Logo（置於「校園網路安全防禦中心 核發」左邊，整體於最下方置中且不超框）
       const logoImg = new Image();
       logoImg.onload = function () {
-        const logoH = 50;
+        const logoH = 34;
         const logoW = logoH * (logoImg.width / logoImg.height);
         const issuerText = "校園網路安全防禦中心 核發";
-        ctx.font = "bold 22px Microsoft JhengHei, sans-serif";
+        ctx.font = "bold 19px Microsoft JhengHei, sans-serif";
         const textW = ctx.measureText(issuerText).width;
-        const gap = 14;
+        const gap = 10;
         const totalW = logoW + gap + textW;
         const startX = 500 - totalW / 2;
 
-        ctx.drawImage(logoImg, startX, 594, logoW, logoH);
+        ctx.drawImage(logoImg, startX, 602, logoW, logoH);
         ctx.fillStyle = "#e2e8f0";
         ctx.textAlign = "left";
-        ctx.fillText(issuerText, startX + logoW + gap, 628);
+        ctx.fillText(issuerText, startX + logoW + gap, 626);
       };
       logoImg.src = "Qbi教學頻道Logo_小狐狸.png";
 
